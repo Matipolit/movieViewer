@@ -1,5 +1,6 @@
 use iced::widget::{button, column, container, row, text};
-use iced::{Alignment, Application, Command, Event, Length, Settings};
+use iced::{keyboard, subscription, window};
+use iced::{Alignment, Application, Command, Event, Length, Settings, Subscription};
 
 use native_dialog::FileDialog;
 use walkdir::WalkDir;
@@ -196,6 +197,7 @@ impl MovieFolder {
 
 #[derive(Debug, Clone)]
 enum Message {
+    EventOccurred(Event),
     FolderSelect,
     FolderSelected(Result<String, Error>),
     FolderLoaded(Result<MovieFolder, Error>),
@@ -210,8 +212,13 @@ impl Application for MovieViewer {
     fn new(_flags: ()) -> (MovieViewer, Command<Message>) {
         (
             MovieViewer::Selecting,
+            //Command::none(),
             iced::window::change_mode(iced::window::Mode::Fullscreen),
         )
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        subscription::events().map(Message::EventOccurred)
     }
 
     fn title(&self) -> String {
@@ -220,6 +227,28 @@ impl Application for MovieViewer {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::EventOccurred(event) => {
+                if let Event::Keyboard(keyboard::Event::KeyPressed {
+                    key_code,
+                    modifiers,
+                }) = event
+                {
+                    if key_code == keyboard::KeyCode::Escape {
+                        window::close::<Message>()
+                    } else if key_code == keyboard::KeyCode::Enter {
+                        match self {
+                            MovieViewer::Selecting => {
+                                Command::perform(MovieFolder::select(), Message::FolderSelected)
+                            }
+                            _ => Command::none(),
+                        }
+                    } else {
+                        Command::none()
+                    }
+                } else {
+                    Command::none()
+                }
+            }
             Message::FolderSelect => {
                 Command::perform(MovieFolder::select(), Message::FolderSelected)
             }
@@ -274,7 +303,7 @@ impl Application for MovieViewer {
                         .into(),
                     );
                     i -= 1;
-                    if (i == 0) {
+                    if i == 0 {
                         movie_rows.push(row(current_row).spacing(6).into());
                         current_row = Vec::with_capacity(4);
                         i = 4;
