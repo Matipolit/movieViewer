@@ -1,3 +1,5 @@
+use std::env;
+
 use iced::widget::{button, column, container, row, text};
 use iced::{keyboard, subscription, window};
 use iced::{Alignment, Application, Command, Event, Length, Settings, Subscription};
@@ -11,7 +13,20 @@ use self::widget::Element;
 pub mod config;
 
 fn main() -> iced::Result {
-    MovieViewer::run(Settings::default())
+    let args: Vec<String> = env::args().collect();
+    let mut flags: (bool) = (false);
+    if args.contains(&"--fullscreen".to_string()) {
+        flags = (true)
+    }
+    MovieViewer::run(Settings {
+        flags: flags,
+        window: iced::window::Settings {
+            position: iced::window::Position::Centered,
+            ..iced::window::Settings::default()
+        },
+        antialiasing: true,
+        ..Settings::default()
+    })
 }
 
 //theming
@@ -207,13 +222,16 @@ impl Application for MovieViewer {
     type Theme = Theme;
     type Message = Message;
     type Executor = iced::executor::Default;
-    type Flags = ();
+    type Flags = (bool);
 
-    fn new(_flags: ()) -> (MovieViewer, Command<Message>) {
+    fn new(flags: (bool)) -> (MovieViewer, Command<Message>) {
         (
             MovieViewer::Selecting,
-            //Command::none(),
-            iced::window::change_mode(iced::window::Mode::Fullscreen),
+            if flags == (true) {
+                iced::window::change_mode(iced::window::Mode::Fullscreen)
+            } else {
+                Command::none()
+            },
         )
     }
 
